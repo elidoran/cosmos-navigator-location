@@ -21,9 +21,9 @@ Nav =
   # adds actions to call when the location changes
   onLocation: (action) -> # TODO: validate it's a function
     Tracker.autorun (c) ->
-      location = Nav.get.location()
-      if not c.firstRun and location?
-        action location, c
+      context = location:Nav.get.location()
+      if not c.firstRun and context.location?
+        action.call context, context.location, c
     return
 
   # set state in the browser's push api for the current location
