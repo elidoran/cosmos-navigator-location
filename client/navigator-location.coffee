@@ -22,8 +22,8 @@ Nav =
   onLocation: (action) -> # TODO: validate it's a function
     Tracker.autorun (c) ->
       location = Nav.get.location()
-      console.log 'autorun location: ',location
-      action location, c if location?
+      if not c.firstRun and location?
+        action location, c
     return
 
   # set state in the browser's push api for the current location
