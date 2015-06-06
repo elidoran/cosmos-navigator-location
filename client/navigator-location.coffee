@@ -1,18 +1,23 @@
 # Nav is the main object for all cosmos:navigator packages
 # this package is the base package all others are built from.
 Nav =
+
   # tells if Nav is currently running
   running: false
+
   # (non-reactive) a string containing the browser location's path/query/hash
   location: null
   # reactive version of the above value
   _location: new ReactiveVar()
+
   # convenience function to set both location values
   _setLocations: (location) -> @location = location ; @_location.set location
+
   # all reactive getters
   get:
     # returns reactive value of location
     location: -> Nav._location.get()
+
   # all setters
   set:
     # changes the current location to the specified one
@@ -90,7 +95,6 @@ Nav =
   # triggering actions
   _handlePopstate: (event) ->
     unless document.readyState is 'complete' then return
-    console.log 'event.state:',event?.state
     @_setLocations @_buildLocation()
     return
 
