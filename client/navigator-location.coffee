@@ -21,6 +21,8 @@ Nav =
   # adds actions to call when the location changes
   onLocation: (action) -> # TODO: validate it's a function
     Tracker.autorun (c) ->
+      # Nav.reload() will trigger this tracker causing this autorun to rerun
+      _reloadTracker.depend()
       context = location:Nav.get.location()
       if not c.firstRun and context.location?
         action.call context, context.location, c
@@ -29,6 +31,12 @@ Nav =
   # use history to move back `count` number of times
   # TODO: ensure we don't move back passed Nav loading?
   back: (count) -> @history.back count
+
+  # use in autoruns so reload() can trigger them to run again
+  _reloadTracker: new Tracker.Dependency()
+
+  # trigger all onLocation autoruns to rerun
+  reload: -> @_reloadTracker.changed()
 
   # add more state info to the current state
   addState: (moreState) -> @_putState Nav.state, moreState
