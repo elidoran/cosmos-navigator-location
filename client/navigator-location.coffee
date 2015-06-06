@@ -26,6 +26,10 @@ Nav =
         action.call context, context.location, c
     return
 
+  # use history to move back `count` number of times
+  # TODO: ensure we don't move back passed Nav loading?
+  back: (count) -> @history.back count
+
   # add more state info to the current state
   addState: (moreState) -> @_putState Nav.state, moreState
 
