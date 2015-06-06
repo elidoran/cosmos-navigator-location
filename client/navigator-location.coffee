@@ -143,6 +143,7 @@ Nav =
   _newState: (location, state) ->
     unless location?
       location = state?.location ? @_buildLocation()
+    Nav.state = state
     @history.pushState state, document.title, location
     @_setLocations location
     return true
