@@ -16,7 +16,7 @@ Nav =
   # all setters
   set:
     # changes the current location to the specified one
-    location: (newLocation) -> Nav._addState newLocation
+    location: (newLocation) -> Nav._newState newLocation
 
   # adds actions to call when the location changes
   onLocation: (action) -> # TODO: validate it's a function
@@ -120,7 +120,7 @@ Nav =
 
     if path is @location then return # if new path is same as old path...
 
-    @_addState path
+    @_newState path
 
     return
 
@@ -136,7 +136,7 @@ Nav =
     return origin
 
   # create a new state by pushing it onto history and then set the new location
-  _addState: (location, state) ->
+  _newState: (location, state) ->
     unless location?
       location = state?.location ? @_buildLocation()
     @history.pushState state, document.title, location
