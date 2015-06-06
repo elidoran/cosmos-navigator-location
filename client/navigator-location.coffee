@@ -27,7 +27,7 @@ Nav =
   onLocation: (action) -> # TODO: validate it's a function
     Tracker.autorun (c) ->
       # Nav.reload() will trigger this tracker causing this autorun to rerun
-      _reloadTracker.depend()
+      Nav._reloadTracker.depend()
       context = location:Nav.get.location()
       if not c.firstRun and context.location?
         action.call context, context.location, c
