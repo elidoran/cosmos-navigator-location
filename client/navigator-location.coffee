@@ -124,6 +124,14 @@ Nav =
 
     return
 
+  # create a new state by pushing it onto history and then set the new location
+  _newState: (location, state) ->
+    unless location?
+      location = state?.location ? @_buildLocation()
+    @history.pushState state, document.title, location
+    @_setLocations location
+    return true
+
   # get the origin of the current location URL
   _origin: ->
     # try getting from the browser's location object
@@ -134,14 +142,6 @@ Nav =
       origin = @_the.location.protocol + '//' + @_the.location.hostname +
         if @_the.location?.port? then ':' + @_the.location.port else ''
     return origin
-
-  # create a new state by pushing it onto history and then set the new location
-  _newState: (location, state) ->
-    unless location?
-      location = state?.location ? @_buildLocation()
-    @history.pushState state, document.title, location
-    @_setLocations location
-    return true
 
   # setup Nav based on options.
   _setup: (options) -> # TODO: base path, hashbang. use @_decode
