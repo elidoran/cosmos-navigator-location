@@ -98,11 +98,14 @@ Nav =
   # listener for click events. filters out clicks which we ignore handling
   # such as 'mailto:'.
   _handleClick: (event) ->
+
+    # return if not a simple click or it's already prevented.
     if @_which event isnt 1 or
       event?.metaKey? or event?.ctrlKey? or event?.shiftKey? or
       event.defaultPrevented
         return
 
+    # get anchor element above the clicked element
     el = event.target # TODO: better way to find parent anchor element?
     until not el? or el?.nodeName is 'A' then el = el?.parentNode
     unless el?.nodeName is 'A' then return
@@ -120,7 +123,7 @@ Nav =
     if el?.target then return
 
     if el?.origin? and el.origin isnt @_origin() then return
-    else if el?.href?.indexOf(@_origin()) isnt 0 then return
+    if el?.href?.indexOf(@_origin()) isnt 0 then return
 
     path = @_elementPath el
 
