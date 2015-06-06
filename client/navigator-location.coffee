@@ -26,11 +26,11 @@ Nav =
         action.call context, context.location, c
     return
 
+  # add more state info to the current state
+  addState: (moreState) -> @_putState Nav.state, moreState
+
   # set state in the browser's push api for the current location
-  setState: (state={}) ->
-    location = state?.location ? @_buildLocation()
-    @history.replaceState state, document.title, location
-    return
+  setState: (state={}) -> @_putState state
 
   # configure with options and set location to current browser location
   # triggering actions
@@ -142,6 +142,12 @@ Nav =
       origin = @_the.location.protocol + '//' + @_the.location.hostname +
         if @_the.location?.port? then ':' + @_the.location.port else ''
     return origin
+
+  _putState: (state, extraState={}) ->
+    location = state?.location ? @_buildLocation()
+    Nav.state = _.extend state, moreState
+    @history.replaceState Nav.state, document.title, location
+    return
 
   # setup Nav based on options.
   _setup: (options) -> # TODO: base path, hashbang. use @_decode
