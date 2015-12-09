@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - "0.10"
+  - "0.12"
  
 install:
   # Install meteor
@@ -15,8 +15,6 @@ install:
 before_script:
   - "meteor --version"
   - "phantomjs --version"
- 
+
 script:
   - "node ./start_test.js"
-
-
