@@ -7,30 +7,33 @@ Package.describe({
 });
 
 Package.onUse(function(api) {
-  api.versionsFrom('1.1');
+  api.versionsFrom('1.2');
 
   api.use([
     'tracker',              // onLocation uses Tracker
     'reactive-var',         // Nav._location is a ReactiveVar
-    'cosmos:running@0.1.0', // for Running.onChange with 'RunNav'
-    'coffeescript@1.0.6'
+    'coffeescript@1.0.11'
   ], ['client']);
 
-    api.addFiles([
-      'client/export.js', // export must be first
-      'client/navigator-location.coffee'
-    ], 'client');
+  // Optionally use Running.onChange() instead of Meteor.startup()
+  api.use('cosmos:running', 'client', {weak:true});
 
-    api.export('Nav', 'client');
+  api.addFiles([
+    'client/export.js', // export must be first
+    'client/navigator-location.coffee'
+  ], 'client');
+
+  // export so we can use Nav from the console
+  api.export('Nav', 'client');
 });
 
 Package.onTest(function(api) {
-  api.use(['tinytest', 'coffeescript@1.0.6']);
+  api.use(['tinytest', 'coffeescript@1.0.11']);
 
   api.use('cosmos:navigator-location');
 
   api.addFiles([
-    'test/navigator-location-tests.coffee'
+    'test/tests.coffee'
   ], 'client');
 
   api.export('Nav', 'client');
