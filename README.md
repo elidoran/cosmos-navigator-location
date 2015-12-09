@@ -1,12 +1,12 @@
 # Cosmos Navigator Location [![Build Status](https://travis-ci.org/elidoran/cosmos-navigator-location.svg?branch=master)](https://travis-ci.org/elidoran/cosmos-navigator-location)
 
-Browser location as a reactive value to be the root of a new router system.
+Browser location as a reactive value as the simple root of a new router system.
 
 Uses both `click` and `popstate` events to track the current browser location.
 
-Allows setting state into `History` via `Nav.setState(Object)`.
+Allows setting state into `History` via `Nav.setState(Object)` and `Nav.addState(Object)`.
 
-Retains simplicity by avoiding extra work, such as:
+Maximum simplicity by avoiding extra work, such as:
 
 1. processing location into parts: path, query, fragment
 2. storing and calling exit/entry callbacks
@@ -14,10 +14,7 @@ Retains simplicity by avoiding extra work, such as:
 4. handling routes and route parameters
 5. performing subscriptions
 
-I made this minimalistic so it avoids doing any work which isn't desired. Then
-we can add functionality by adding packages. It's primary purpose is to
-use click and popstate events to put the location into a reactive var;
-thus bringing the browser location into the Meteor reactivity realm.
+I made this minimalistic so it avoids doing any work which isn't desired. Then functionality can be added by adding packages. It's primary purpose is to use click and popstate events to put the location into a reactive var; thus bringing the browser location into the Meteor reactivity realm.
 
 Cosmos Navigator packages are built upon this package.  
 
@@ -34,6 +31,9 @@ by reacting to location changes.
 
 You may use other Cosmos Navigator packages to fulfill the common functionality such as callbacks, routing, and subscriptions.
 
+TODO: Finish those packages. :)
+
+
 ## Usage: Nav.onLocation(fn)
 
 A convenience function which will call your function when the `location` changes.
@@ -41,14 +41,17 @@ It wraps your function in a `Tracker.autorun()` where it reactively gets the
 location to supply to your function.
 
 The computation is returned by `Nav.onLocation()`, and, the computation is
-provided as the second argument to your function.
+also provided in the object argument to your function as `object.computation`.
+
+The location is also in the object argument. The `this` is the Nav object and it has the `location` value in in. So, there are two ways to get the location value.
 
 ```coffeescript
-Nav.onLocation (theLocation) ->
-  console.log 'the new location is: ',theLocation
+Nav.onLocation (info) ->
+  console.log 'the new location is: ',info.location
+  console.log 'the same location value: ',this.location
 
-Nav.onLocation (theLocation, computation) ->
-  console.log 'the new location is: ',theLocation
+Nav.onLocation (info) ->
+  console.log 'the computation is: ',info.computation
 ```
 
 ## Usage: Tracker.autorun(fn)
@@ -57,8 +60,9 @@ Create your own tracker and access the location variable reactively.
 
 ```coffeescript
 Tracker.autorun (computation) ->
-  location = Nav.get.location()
-  console.log 'the new location is: ',theLocation
+  # optional: Nav._reloadTracker.depends()  reruns tracker on Nav.reload()
+  location = Nav.getLocation()
+  console.log 'the new location is: ',location
 ```
 
 ## API
@@ -73,22 +77,22 @@ Note: It's not a function, which is a *hint* it's non-reactive.
 location = Nav.location
 ```
 
-### Nav.get.location()
+### Nav.getLocation()
 
 The *reactive* access to the current location.
 
 Note: It *is* a function, which is a hint it's *reactive*.
 
 ```coffeescript
-location = Nav.get.location()
+location = Nav.getLocation()
 ```
 
-### Nav.set.location(string)
+### Nav.setLocation(string)
 
 Change the current location of the browser to the specified location.
 
 ```coffeescript
-Nav.set.location '/blog/12345'
+Nav.setLocation '/blog/12345'
 ```
 
 ### Nav.onLocation(fn)
@@ -110,7 +114,11 @@ Nav.setState object
 # later, when location is loaded again,
 # for example, via the back button,
 # you can get your object back like this:
-object = Nav.history.state
+object = Nav.state
+
+# in an Nav.onLocation function:
+Nav.onLocation -> theState = this.state
+# the `this` is the Nav object, and, we set state into Nav.state.
 ```
 
 ### Nav.running
@@ -123,18 +131,6 @@ Note: It's not a function, which is a *hint* it's non-reactive.
 running = Nav.running
 ```
 
-### Nav.get.running()
-
-Reactive boolean representing the Nav's `running` state. After `Nav.start()` it is `true`. After `Nav.stop()` it is `false`.
-
-Note: `Nav.start()` is called automatically as part of `Meteor.startup()`.
-See [Nav.start(Object)](#nav-startobject)
-
-Note: It *is* a function, which is a hint it's *reactive*.
-
-```coffeescript
-running = Nav.get.running()
-```
 
 ### Nav.start(Object)
 
@@ -142,7 +138,8 @@ Nav will use options in the provided Object to initialize and move to its runnin
 state. Unless options specify otherwise, it will add both `click` and `popstate`
 event listeners.
 
-Note: `Nav.start()` is called automatically as part of `Meteor.startup()` via `Running.onChange()`.
+Note: `Nav.start()` is called automatically as part of `Meteor.startup()`. If you are using *cosmos:running* to order your startup functions then Nav will use that with id `CosmosRunNav`.
+
 It tests if Nav is already running before calling start so you have the opportunity to call `Nav.start()` with your own options first. Place your function ahead of ours in the Running object like this:
 
 ```coffeescript
@@ -158,23 +155,39 @@ Running.onChange yourFn
 
 See [cosmos:running](http://github.com/elidoran/cosmos-running) for more details.
 
+
 ### Nav.stop()
 
 Removes both `click` and `popstate` event listeners and sets `running` to false.
 
-## Hashbang paths
 
-Visionmedia's page.js allows configuring use of the hashbang (#!) at the front of
-the path. I haven't implemented it in this package, tho it is possible to do.
+## Nav.setHashbangEnabled(boolean)
+
+You may also use a `Nav.start()` option named `hashbang` set to true to enable it.
+
+When enabled, all locations are prefixed with '/#!' when changing *to* them. Also, all locations have that same prefix removed before passing the location value to tracker computations and setting it into `Nav.location`. This way, all actions don't have to care whether hashbangs are being used.
 
 
-## Cosmos Navigator packages
+## Nav.setBasepath(basepath)
 
-1. *[Unpublished]* navigator : aggregates navigator packages to create the common router functionality
-2. *[Unpublished]* pipeline : changes `onLocation` to create an ordered executable pipeline of actions via cosmos:chain
-3. *[Unpublished]* parse : parses the location into parts
-4. *[Unpublished]* routes : allows specifying traditional routes via `Nav.route()`
-5. *[Unpublished]* view : renders layout and template views
-6. *[Unpublished]* lasimii : a special package using a location pattern convention to simplify routing and rendering
+You may also set a `Nav.start()` string option named `basepath`.
+
+When set, all locations are prefixed with the basepath value when changing to them. If hashbang is also enabled it will be applied to the location *before* prepending the `basepath` value. Also, all locations have the basepath removed before passing the location value to tracker computations and setting it into `Nav.location`. So, all actions don't have to care if there is a basepath.
+
+
+## Nav.reload()
+
+Calling reload triggers all tracker computations to rerun. Well, all those registered with `Nav.onLocation(fn)`. This essentially reruns all tracker computations on the same location.
+
+
+## Nav.back(count)
+
+Same as clicking the back button. It accepts a positive number representing how far back to go.
+
+
+## Nav.forward(count)
+
+Same as clicking the forward button. It accepts a positive number representing how far forward to go.
+
 
 ## MIT License
