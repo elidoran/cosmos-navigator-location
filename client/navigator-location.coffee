@@ -1,5 +1,5 @@
-# Nav is the main object for all cosmos:navigator packages
-# this package is the base package all others are built from.
+# Nav is the global object to control the browser location, location state,
+# and get its location reactively.
 Nav =
 
   # tells if Nav is currently running
@@ -7,44 +7,57 @@ Nav =
 
   # (non-reactive) a string containing the browser location's path/query/hash
   location: null
+
   # reactive version of the above value
   _location: new ReactiveVar()
 
   # convenience function to set both location values
-  _setLocations: (location) -> @location = location ; @_location.set location
+  _setLocations: (location) ->
+    @location = location    # non-reactive
+    @_location.set location # reactive (triggers trackers)
+    # i could emit an event so it's not executed in a tracker, but, i'd need
+    # a browser compatible EventEmitter just for this one event.
+    # could accept functions and add them to an array to call in sequence...
+    # could use Chain
+    # it's possible for them to use Tracker.nonreactive() to get out of Tracker,
+    # so, let's avoid all the extra code and expect them to do that.
 
-  # all reactive getters
-  get:
-    # returns reactive value of location
-    location: -> Nav._location.get()
+  # returns reactive value of location
+  getLocation: -> Nav._location.get()
 
-  # all setters
-  set:
-    # changes the current location to the specified one
-    location: (newLocation) -> Nav._newState newLocation
+  # changes the current location to the specified one
+  setLocation: (newLocation) -> Nav._newState newLocation # TODO: encode this?
 
   # adds actions to call when the location changes
   onLocation: (action) -> # TODO: validate it's a function
     Tracker.autorun (c) ->
       # Nav.reload() will trigger this tracker causing this autorun to rerun
       Nav._reloadTracker.depend()
-      context = location:Nav.get.location()
-      if not c.firstRun and context.location?
-        action.call context, context.location, c
+      location = Nav.getLocation()
+      if not c.firstRun and location? then action.call Nav, location:location, computation:c
     return
 
   # use history to move back `count` number of times
   # TODO: ensure we don't move back passed Nav loading?
-  back: (count) -> @history.back count
+  back: (count=1) -> @history.go -1 * count
 
+  forward: (count=1) -> @history.go count
+  
   # use in autoruns so reload() can trigger them to run again
   _reloadTracker: new Tracker.Dependency()
 
   # trigger all onLocation autoruns to rerun
-  reload: -> @_reloadTracker.changed()
+  reload: ->
+    Nav.isReload = true
+    @_reloadTracker.changed()
 
   # add more state info to the current state
   addState: (moreState) -> @_putState Nav.state, moreState
+
+  setBasepath: (basepath) -> @basepath = basepath
+
+  # change hashbang implementations to either use hashbangs or not
+  setHashbangEnabled: (enabled) -> @_hashbangEnabled = enabled
 
   # set state in the browser's push api for the current location
   setState: (state={}) -> @_putState state
@@ -54,25 +67,30 @@ Nav =
   start: (options) ->
     @_setup options
     @running = true
-    @_setLocations @_buildLocation()
+    location = @_basepathStrip @_hashbangStrip @_buildLocation()
+    @_setLocations location
     return true
 
   # remove listeners which essentially stops this from doing anything
   stop: () ->
     @running = false
     # remove event listeners
-    document.removeEventListener @_clickType(), @_handleClick, false
-    window.removeEventListener 'popstate', @_handlePopstate, false
+    document.removeEventListener @_clickType(), @__handleClick, false
+    window.removeEventListener 'popstate', @__handlePopstate, false
     return true # shows we successfully completed the stop() function
 
-  # bind function so calling it has the `Nav` as the `this`
-  _bindToNav: (listener) ->
-    fn = listener.bind Nav
-    fn.isBoundToNav = true
-    return fn
+  _basepathPrepend: (location) ->
+    if @basepath? and location[...@basepath.length] isnt @basepath
+      @basepath + location
+    else location
+
+  _basepathStrip: (location) ->
+    if @basepath? and location[...@basepath.length] is @basepath
+      location[@basepath.length..]
+    else location
 
   # uses the browser's location object to build the current location
-  _buildLocation: -> # TODO: shouldn't we put a '#' before location.hash ?
+  _buildLocation: ->
     @_the.location.pathname + @_the.location.search + @_the.location.hash
 
   # sets click event based on existence of `ontouchstart`
@@ -95,10 +113,13 @@ Nav =
   # triggering actions
   _handlePopstate: (event) ->
     unless document.readyState is 'complete' then return
-    @_setLocations @_buildLocation()
+    # location *without* basepath and hashbang:
+    location = @_basepathStrip @_hashbangStrip @_buildLocation()
+    Nav.state = event.state
+    @_setLocations location
     return
 
-  # NOTE: mplementation basically from visionmedia/pagejs
+  # NOTE: implementation basically from visionmedia/pagejs
   # listener for click events. filters out clicks which we ignore handling
   # such as 'mailto:'.
   _handleClick: (event) ->
@@ -131,10 +152,6 @@ Nav =
 
     path = @_elementPath el
 
-    # TODO: figure out why they coded their section so strangely... this is a
-    # close approximation...i'm not using a base path yet, so...
-    #if base?.length > 0 and path.indexOf base is 0 then return #hashbang thing removed
-
     event.preventDefault()
 
     if path is @location then return # if new path is same as old path...
@@ -143,13 +160,29 @@ Nav =
 
     return
 
+  _hashbangPrepend: (location) ->
+    # TODO: ensure the specified location starts with a slash after hashbang?
+    if @_hashbangEnabled and location[...4] isnt '/#!/' then '/#!' + location
+    else location
+
+  _hashbangStrip: (location) ->
+    if @_hashbangEnabled and location[...4] is '/#!/' then location[3..] else location
+
   # create a new state by pushing it onto history and then set the new location
+  # used by Nav.setLocation() and click event handler.
   _newState: (location, state) ->
-    unless location?
-      location = state?.location ? @_buildLocation()
     Nav.state = state
-    @history.pushState state, document.title, location
-    @_setLocations location
+
+    # location *with* basepath and hashbang
+    fullLocation = @_basepathPrepend @_hashbangPrepend location
+
+    # location *without* basepath and hashbang:
+    shortLocation = @_basepathStrip @_hashbangStrip location
+
+    @history.pushState state, document.title, fullLocation
+
+    @_setLocations shortLocation
+
     return true
 
   # get the origin of the current location URL
@@ -164,8 +197,13 @@ Nav =
     return origin
 
   _putState: (state, extraState={}) ->
-    location = state?.location ? @_buildLocation()
-    Nav.state = _.extend state, moreState
+    if state?
+      Nav.state = state
+      state[key] = value for own key,value of extraState
+    else Nav.state = extraState
+
+    # for basepath and hashbang just build location from the browser's location
+    location = @_buildLocation()
     @history.replaceState Nav.state, document.title, location
     return
 
@@ -176,24 +214,45 @@ Nav =
       locationCount: 0 # TODO: use this ;)
       location: window?.history?.location ? window.location
 
-    # store History object on Nav. If unavailable, put in a NOOP placeholder
-    @history = window?.history ? {
-      pushState:(->), replaceStart:(->), back:(->), forward:(->), go:(->)
-    }
+    # store History object on Nav.
+    # if there is a history pushState function then we're fine.
+    if window?.history?.pushState?
+      @history = window.history
+
+    # there's no push state API, so, enable hashbangs now and provide an
+    # alternate history implementation.
+    # TODO: there's a history push state polyfill. add that with a conditional
+    #       comment to support IE browsers. what about other old browsers? hmm.
+    else
+      @_setHashbangEnabled true
+      # add NOOP implementations.
+      # TODO:
+      #  implement these for browsers which don't have a history API.
+      #  we'd have to track our
+      #  pushState should change the browser location with a hashbang location
+      #  replaceState should only update the stored state for the location.
+      #
+      @history = {
+        pushState:(->), replaceState:(->), back:(->), forward:(->)
+      }
 
     @_decode = unless options?.decode then ((v)->v) else @_decodeThis
 
     unless options?.click is false # TODO: clicks element selector?
-      @_handleClick = @_bindToNav @_handleClick
-      document.addEventListener @_clickType(), @_handleClick, false
+      @__handleClick ?= @_handleClick.bind Nav
+      document.addEventListener @_clickType(), @__handleClick, false
 
     unless options?.popstate is false
-      @_handlePopstate = @_bindToNav @_handlePopstate
-      window.addEventListener 'popstate', @_handlePopstate, false
+      @__handlePopstate ?= @_handlePopstate.bind Nav
+      window.addEventListener 'popstate', @__handlePopstate, false
+
+    if options?.hashbang is true then @_setHashbangEnabled true
+
+    if options?.basepath? then @_setBasepath options.basepath
 
     return true
 
   # get the which/button value
-  _which: (event) -># TODO:? shorten to: event?.which ? window?.event?.button
+  _which: (event) -> # TODO:? shorten to: event?.which ? window?.event?.button
     event ?= window?.event
     return event?.which ? event.button
