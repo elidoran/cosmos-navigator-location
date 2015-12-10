@@ -3,7 +3,7 @@ node_js:
   - "0.12"
 
 env:
-  - TEST_DELAY=1000
+  - TEST_DELAY=100
 
 install:
   # Install meteor
