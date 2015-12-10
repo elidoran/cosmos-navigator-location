@@ -42,7 +42,7 @@ Nav =
   back: (count=1) -> @history.go -1 * count
 
   forward: (count=1) -> @history.go count
-  
+
   # use in autoruns so reload() can trigger them to run again
   _reloadTracker: new Tracker.Dependency()
 
@@ -114,9 +114,9 @@ Nav =
   _handlePopstate: (event) ->
     unless document.readyState is 'complete' then return
     # location *without* basepath and hashbang:
-    location = @_basepathStrip @_hashbangStrip @_buildLocation()
+    location = Nav._basepathStrip Nav._hashbangStrip Nav._buildLocation()
     Nav.state = event.state
-    @_setLocations location
+    Nav._setLocations location
     return
 
   # NOTE: implementation basically from visionmedia/pagejs
@@ -125,7 +125,7 @@ Nav =
   _handleClick: (event) ->
 
     # return if not a simple click or it's already prevented.
-    if @_which event isnt 1 or
+    if Nav._which event isnt 1 or
       event?.metaKey? or event?.ctrlKey? or event?.shiftKey? or
       event.defaultPrevented
         return
@@ -140,23 +140,23 @@ Nav =
       return
 
     link = el.getAttribute 'href'
-    if el.pathname is @_the.location.pathname and (el?.hash or link is '#')
+    if el.pathname is Nav._the.location.pathname and (el?.hash or link is '#')
       return
 
     if link?.indexOf('mailto:') > -1 then return
 
     if el?.target then return
 
-    if el?.origin? and el.origin isnt @_origin() then return
-    if el?.href?.indexOf(@_origin()) isnt 0 then return
+    if el?.origin? and el.origin isnt Nav._origin() then return
+    if el?.href?.indexOf(Nav._origin()) isnt 0 then return
 
-    path = @_elementPath el
+    path = Nav._elementPath el
 
     event.preventDefault()
 
-    if path is @location then return # if new path is same as old path...
+    if path is Nav.location then return # if new path is same as old path...
 
-    @_newState path
+    Nav._newState path
 
     return
 
@@ -239,12 +239,10 @@ Nav =
     @_decode = unless options?.decode then ((v)->v) else @_decodeThis
 
     unless options?.click is false # TODO: clicks element selector?
-      @__handleClick ?= @_handleClick.bind Nav
-      document.addEventListener @_clickType(), @__handleClick, false
+      document.addEventListener @_clickType(), @_handleClick, false
 
     unless options?.popstate is false
-      @__handlePopstate ?= @_handlePopstate.bind Nav
-      window.addEventListener 'popstate', @__handlePopstate, false
+      window.addEventListener 'popstate', @_handlePopstate, false
 
     if options?.hashbang is true then @_setHashbangEnabled true
 
