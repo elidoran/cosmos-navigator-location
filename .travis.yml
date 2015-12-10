@@ -1,7 +1,10 @@
 language: node_js
 node_js:
   - "0.12"
- 
+
+env:
+  - TEST_DELAY=1000
+
 install:
   # Install meteor
   - "curl https://install.meteor.com | /bin/sh"
