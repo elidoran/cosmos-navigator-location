@@ -116,7 +116,7 @@ Nav.setState object
 # you can get your object back like this:
 object = Nav.state
 
-# in an Nav.onLocation function:
+# in a Nav.onLocation function:
 Nav.onLocation -> theState = this.state
 # the `this` is the Nav object, and, we set state into Nav.state.
 ```
